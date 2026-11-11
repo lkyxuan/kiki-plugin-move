@@ -209,7 +209,7 @@ const mask = (v) => {
 
 /** 把对象里像密钥的值打码（env、headers 全部打码） */
 export function maskObject(obj, parentKey = "") {
-  if (Array.isArray(obj)) return obj.map((x) => maskObject(x, parentKey));
+  if (Array.isArray(obj)) return obj.map((x, i) => (typeof x === "string" && i > 0 && /^--?[\w-]*(key|token|secret|password|auth)[\w-]*$/i.test(String(obj[i - 1])) ? "***" : maskObject(x, parentKey)));
   if (obj && typeof obj === "object") {
     const out = {};
     for (const [k, v] of Object.entries(obj)) {
@@ -219,6 +219,7 @@ export function maskObject(obj, parentKey = "") {
     return out;
   }
   if (typeof obj === "string" && /^(sk-|ghp_|gho_|xox[bp]-|eyJ)[A-Za-z0-9_\-.]{10,}/.test(obj)) return mask(obj);
+  if (typeof obj === "string") return maskInline(obj);
   return obj;
 }
 
@@ -242,12 +243,22 @@ export function maskText(text) {
 
 // ---------- 连接器清单 ----------
 
+/** 一行连接方式（命令参数、网址）里打码：令牌样子的串、?token= 这类参数、--api-key 后面的值 */
+export function maskInline(s) {
+  return String(s || "")
+    .replace(/(sk-|ghp_|gho_|ghu_|ghs_|github_pat_|xox[abposr]-|AKIA|AIza)[A-Za-z0-9_\-]{8,}/g, "$1***")
+    .replace(/([?&][\w-]*(key|token|secret|password|auth|sig)[\w-]*=)[^&\s"]+/gi, "$1***")
+    .replace(/(--?[\w-]*(key|token|secret|password|auth)[\w-]*[= ])("[^"]*"|\S+)/gi, "$1***")
+    .replace(/(\/\/[^/:@\s]+:)[^@\s]+@/g, "$1***@")
+    .replace(/(Bearer\s+)\S+/gi, "$1***");
+}
+
 /** ~/.claude.json 和 .mcp.json 里的 mcpServers → [{name, scope, how}] */
 export function claudeMcp(claudeJson, scopeName = "全局") {
   const out = [];
   const add = (servers, scope) => {
     for (const [name, s] of Object.entries(servers || {})) {
-      out.push({ name, scope, how: s.url ? `${s.type || "http"} ${s.url}` : [s.command, ...(s.args || [])].filter(Boolean).join(" "), env: Object.keys(s.env || {}) });
+      out.push({ name, scope, how: maskInline(s.url ? `${s.type || "http"} ${s.url}` : [s.command, ...(s.args || [])].filter(Boolean).join(" ")), env: Object.keys(s.env || {}) });
     }
   };
   add(claudeJson?.mcpServers, scopeName);
@@ -277,7 +288,7 @@ export function codexMcp(toml) {
     if (kv[1] === "url") cur.how = kv[2].replace(/^"|"$/g, "");
     if (kv[1] === "env") cur.env.push(...[...kv[2].matchAll(/([\w-]+)\s*=/g)].map((m) => m[1]));
   }
-  return out.map(({ _env, ...x }) => ({ ...x, how: x.how.trim() }));
+  return out.map(({ _env, ...x }) => ({ ...x, how: maskInline(x.how.trim()) }));
 }
 
 export function mcpMarkdown(list) {
