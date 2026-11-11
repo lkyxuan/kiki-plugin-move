@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI 搬家</title>
+<meta name="description" content="把 Claude 和 Codex 的聊天、记忆、Skill、指令、连接器收进一个压缩包。全在浏览器里处理，不上传。">
+<style>
+  :root { --bg: #f5f5f7; --card: #fff; --text: #1d1d1f; --muted: #6e6e73; --faint: #a1a1a6; --line: #e5e5ea; --fill: #ececf0; --hover: #e2e2e7; --accent: #5b6cf0; --warn: #b25000; --code: #f0f0f3; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #000; --card: #161618; --text: #f5f5f7; --muted: #a1a1a6; --faint: #6e6e73; --line: #2c2c2e; --fill: #232326; --hover: #2c2c30; --accent: #7c8aff; --warn: #ff9f0a; --code: #232326; } }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.6 -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif; }
+  main { max-width: 720px; margin: 0 auto; padding: 48px 16px 64px; display: flex; flex-direction: column; gap: 20px; }
+  h1 { font-size: 28px; margin: 0; letter-spacing: -.01em; }
+  .lead { color: var(--muted); margin: 4px 0 0; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; display: flex; flex-direction: column; gap: 14px; }
+  .step { display: flex; gap: 14px; align-items: flex-start; }
+  .num { flex: none; width: 24px; height: 24px; border-radius: 50%; background: var(--fill); color: var(--muted); font-size: 13px; display: grid; place-items: center; font-weight: 600; margin-top: 2px; }
+  .step b { display: block; font-weight: 600; }
+  .step .meta { margin-top: 2px; }
+  .meta { color: var(--muted); font-size: 13px; margin: 0; }
+  .warn { color: var(--warn); }
+  code { background: var(--code); border-radius: 5px; padding: 1px 5px; font-size: 13px; }
+  kbd { font: 12px/1 inherit; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 5px; padding: 2px 5px; background: var(--card); }
+  label.pick { display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; padding: 6px 12px; border-radius: 8px; background: var(--fill); font-size: 13px; cursor: pointer; }
+  label.pick:hover { background: var(--hover); }
+  label.pick input { display: none; }
+  .st { font-size: 13px; color: var(--muted); margin-left: 8px; }
+  button.go, a.dl { font: inherit; border: 0; border-radius: 10px; padding: 10px 18px; background: var(--accent); color: #fff; font-weight: 600; cursor: pointer; text-decoration: none; align-self: flex-start; }
+  button.go:disabled { opacity: .45; cursor: default; }
+  #progress { font-size: 13px; color: var(--muted); min-height: 1em; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th { text-align: left; color: var(--faint); font-weight: 500; font-size: 12px; padding: 6px 0; }
+  td { padding: 7px 0; border-top: 1px solid var(--line); }
+  td + td, th + th { width: 80px; font-variant-numeric: tabular-nums; }
+  ol { margin: 0; padding-left: 20px; } ol li { margin: 4px 0; }
+  .foot { color: var(--faint); font-size: 13px; text-align: center; }
+  .foot a { color: var(--muted); }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>AI 搬家</h1>
+    <p class="lead">号被封之前先备份。把这台电脑上 Claude Code 和 Codex 的聊天、记忆、Skill、指令、连接器收进一个压缩包。全在你的浏览器里处理，什么都不上传，不带登录凭证。</p>
+  </header>
+
+  <section class="card">
+    <div class="step"><span class="num">1</span><div>
+      <b>选 Claude 的文件夹</b>
+      <p class="meta">在你的用户目录里，叫 <code>.claude</code>。它是隐藏的：在选择窗口里按 <kbd>⌘</kbd> <kbd>⇧</kbd> <kbd>.</kbd> 就能看到（Windows 在 <code>C:\Users\你\.claude</code>）。</p>
+      <label class="pick"><input type="file" id="pickClaude" webkitdirectory multiple>选文件夹</label><span class="st" id="claudeSt"></span>
+    </div></div>
+    <div class="step"><span class="num">2</span><div>
+      <b>选 Codex 的文件夹</b>
+      <p class="meta">同一个地方，叫 <code>.codex</code>。没用 Codex 就跳过。</p>
+      <label class="pick"><input type="file" id="pickCodex" webkitdirectory multiple>选文件夹</label><span class="st" id="codexSt"></span>
+    </div></div>
+    <div class="step"><span class="num">3</span><div>
+      <b>可选：选 <code>.claude.json</code> 文件</b>
+      <p class="meta">在用户目录里，和 <code>.claude</code> 文件夹挨着。里面是你连的 MCP 服务，选了才能列连接器清单。</p>
+      <label class="pick"><input type="file" id="pickClaudeJson" accept=".json">选文件</label><span class="st" id="claudeJsonSt"></span>
+    </div></div>
+    <button class="go" id="go" disabled>生成搬家包</button>
+    <div id="progress"></div>
+  </section>
+
+  <section class="card" id="result" hidden>
+    <b>好了，压缩包已经开始下载</b>
+    <div id="summary"></div>
+    <a class="dl" id="download">没开始下载？点这里</a>
+    <div>
+      <b>接下来</b>
+      <ol class="meta">
+        <li>网页版 Claude、ChatGPT 的聊天和记忆在服务器上：照包里的 <code>账号数据/去哪导出.md</code> 去官网导出。</li>
+        <li>写交接：包里的 <code>交接/写交接的咒语.md</code> 有三段话，贴给老 AI（号还在）或新 AI（配上 <code>交接/素材/</code>），让它写三份交接文档。</li>
+        <li>搬进新家：把整个文件夹交给新 AI，贴 <code>交接/迁入提示词.md</code> 里那段话。</li>
+      </ol>
+    </div>
+  </section>
+
+  <p class="foot">想让 AI 自动写交接、每周自动备份、搬进去不用自己动手：用 <a href="https://kikibao.com">Kiki</a> 的搬家宝。 · <a href="https://github.com/lkyxuan/kiki-plugin-move">源代码</a></p>
+</main>
+<script type="module" src="app.mjs"></script>
+</body>
+</html>
