@@ -1,0 +1,15 @@
+{
+  "kiki": "plugin",
+  "name": "搬家宝",
+  "version": "0.1.0",
+  "title": "搬家",
+  "page": "page/index.html",
+  "needs": { "network": false },
+  "schedule": [
+    {
+      "title": "每周备份 Claude 和 Codex",
+      "repeat": "每周一 10:00",
+      "prompt": "照技能 banjia 只做第 1 步「收本机家当」，不写交接、不出声。出错了才告诉我。"
+    }
+  ]
+}
